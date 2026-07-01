@@ -46,19 +46,11 @@ COMPONENT_COLORS = {
     "QKV Projection": "#8c564b",
     "QKT MatMul": "#c49c94",
     "Softmax": "#e377c2",
-    "Other": "#c7c7c7",
+    "Final Norm": "#7f7f7f",
+    "Unmapped": "#c7c7c7",
 }
 
-STACK_COLORS = {
-    "FFN": "#d17bc8",
-    "QKV Proj": "#5b88e8",
-    "Softmax": "#ff6666",
-    "OutProj": "#f5a25d",
-    "Q.K": "#4faf7a",
-    "Score.V": "#937064",
-    "Mask": "#9273d8",
-    "Other": "#c9c9c9",
-}
+STACK_COLORS = COMPONENT_COLORS
 
 
 def collect_csvs(paths: list[str]) -> list[Path]:
@@ -110,26 +102,13 @@ def component_for_operation(operation_key: str) -> str:
         return "LayerNorm (Pre-Cross-Attention)"
     if operation_key == "model.output_head":
         return "Output Head Projection"
-    return "Other"
+    if operation_key == "model.final_norm":
+        return "Final Norm"
+    return "Unmapped"
 
 
 def stack_group_for_operation(operation_key: str) -> str:
-    suffix = operation_key.split(".", 1)[-1]
-    if operation_key.startswith("ff."):
-        return "FFN"
-    if suffix in {"q_proj", "k_proj", "v_proj"}:
-        return "QKV Proj"
-    if suffix == "softmax":
-        return "Softmax"
-    if suffix == "out_projection":
-        return "OutProj"
-    if suffix == "matmul_qk":
-        return "Q.K"
-    if suffix == "weighted_sum":
-        return "Score.V"
-    if suffix in {"apply_causal_mask", "apply_padding_mask"}:
-        return "Mask"
-    return "Other"
+    return component_for_operation(operation_key)
 
 
 def normalize_profile_df(df, pd):

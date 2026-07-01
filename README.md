@@ -247,12 +247,16 @@ figures/presentation/encoder_decoder/model_family_component_share.png
 figures/presentation/encoder_decoder/pie_charts/pie_d<d>_h<h>_l<L>.png
 ```
 
-The stacked charts use broad component groups for readability. The pie charts
-use the detailed component legend and are emitted per architecture and per
-`(d, h, L)` configuration. With the built-in real-shape presets, `h` is tied to
-`d`, so the pie-chart count is `unique d values x unique L values` for each
-architecture. Use `--pie-index d_l` to force exactly one pie per `(d, L)` if a
-future sweep varies multiple `h` values for the same `d`.
+The stacked charts and pie charts both use detailed profiled components, so
+known latency scopes such as final normalization, KV-cache concat, output head,
+masks, projections, matmuls, softmax, and FFN pieces are quantified directly
+instead of being folded into `Other`. An `Unmapped` bucket only appears if a new
+operation key is added without a component label. Pie charts are emitted per
+architecture and per `(d, h, L)` configuration. With the built-in real-shape
+presets, `h` is tied to `d`, so the pie-chart count is `unique d values x
+unique L values` for each architecture. Use `--pie-index d_l` to force exactly
+one pie per `(d, L)` if a future sweep varies multiple `h` values for the same
+`d`.
 
 Regenerate plots from existing CSVs:
 
