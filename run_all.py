@@ -14,14 +14,12 @@ REPO_ROOT = Path(__file__).resolve().parent
 ENCODER_SHAPES = ["bert_base", "bert_large"]
 DECODER_SHAPES = ["gpt2_medium", "gpt3_2p7b", "llama_7b"]
 ENCODER_DECODER_SHAPES = ["t5_base", "t5_large", "bart_large"]
-EXTREME_DECODER_SHAPES = ["llama2_70b_gqa"]
 FAMILIES = ["bert", "gpt", "llama", "t5", "bart"]
 
 TIER_SEQ_LENS = {
     "smoke": [128],
     "standard": SEQ_LEN_PRESETS["standard"],
     "full": sorted({seq for values in SEQ_LEN_PRESETS.values() for seq in values}),
-    "exhaustive": sorted({seq for values in SEQ_LEN_PRESETS.values() for seq in values}),
 }
 
 
@@ -89,10 +87,6 @@ def shapes_for_tier(args: argparse.Namespace) -> tuple[list[str], list[str], lis
     encoder_decoder_shapes = list(ENCODER_DECODER_SHAPES)
     attention_shapes = encoder_shapes + decoder_shapes + encoder_decoder_shapes
 
-    if args.tier == "exhaustive":
-        decoder_shapes.extend(EXTREME_DECODER_SHAPES)
-        attention_shapes.extend(EXTREME_DECODER_SHAPES)
-
     return encoder_shapes, decoder_shapes, encoder_decoder_shapes, attention_shapes
 
 
@@ -103,7 +97,7 @@ def build_parser() -> argparse.ArgumentParser:
             "and summary figure generation."
         )
     )
-    parser.add_argument("--tier", choices=["smoke", "standard", "full", "exhaustive"], default="full")
+    parser.add_argument("--tier", choices=["smoke", "standard", "full"], default="full")
     parser.add_argument("--seq-lens", default=None, help="Override tier sequence lengths, e.g. 128,512,1024")
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--warmups", type=int, default=2)

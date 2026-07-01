@@ -83,7 +83,6 @@ These presets live in `common/config.py`.
 | `gpt2_medium` | GPT-2 medium | 1024 | 16 | 16 | 24 | 4096 |
 | `gpt3_2p7b` | GPT-3 2.7B style | 2560 | 32 | 32 | 32 | 10240 |
 | `llama_7b` | LLaMA-7B style | 4096 | 32 | 32 | 32 | 11008 |
-| `llama2_70b_gqa` | LLaMA-2-70B GQA style | 8192 | 64 | 8 | 80 | 28672 |
 | `t5_base` | T5-base | 768 | 12 | 12 | 12 | 3072 |
 | `t5_large` | T5-large | 1024 | 16 | 16 | 24 | 4096 |
 | `bart_large` | BART-large | 1024 | 16 | 16 | 12 | 4096 |

@@ -40,21 +40,6 @@ python run_all.py \
   --keep-going
 ```
 
-Exhaustive run, including the LLaMA-2-70B-style GQA synthetic shape:
-
-```bash
-python run_all.py \
-  --tier exhaustive \
-  --device cuda \
-  --dtype float16 \
-  --max-attn-gb 24 \
-  --keep-going
-```
-
-The exhaustive tier can require very large GPU memory because it includes an
-8192-dimensional, 80-layer synthetic model shape. Use `--dry-run` first and
-raise `--max-attn-gb` only on hardware that can support it.
-
 ## Tiers
 
 | Tier | Context lengths `L` | Shapes |
@@ -62,7 +47,6 @@ raise `--max-attn-gb` only on hardware that can support it.
 | `smoke` | 128 | `tiny_debug` only |
 | `standard` | 512, 1024, 2048, 4096 | Realistic default shapes |
 | `full` | 128, 256, 512, 1024, 2048, 4096, 8192 | Realistic default shapes |
-| `exhaustive` | 128, 256, 512, 1024, 2048, 4096, 8192 | Realistic default shapes plus `llama2_70b_gqa` |
 
 The script uses real model-like `(d, h)` pairs from `common/config.py` rather
 than arbitrary Cartesian products. That keeps experiments close to actual BERT,
@@ -77,7 +61,7 @@ GPT, LLaMA, T5, and BART-style configurations.
 | Context length `L` | Directly swept by tier or `--seq-lens` |
 | Hidden dimension `d` | Swept through model-shape presets |
 | Query heads `h` | Swept through model-shape presets |
-| KV heads | Swept through model-shape presets, including GQA in `llama2_70b_gqa` |
+| KV heads | Tracked through model-shape presets; custom GQA runs can use `--num-kv-heads` |
 | Number of layers | Swept through model-shape presets |
 | FFN/intermediate dimension | Swept through model-shape presets |
 
@@ -91,7 +75,6 @@ The built-in layer counts are:
 | `gpt2_medium` | 24 |
 | `gpt3_2p7b` | 32 |
 | `llama_7b` | 32 |
-| `llama2_70b_gqa` | 80 |
 | `t5_base` | 12 |
 | `t5_large` | 24 |
 | `bart_large` | 12 |

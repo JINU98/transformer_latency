@@ -34,7 +34,6 @@ MODEL_SHAPES: dict[str, ModelShape] = {
     "gpt2_medium": ModelShape("gpt2_medium", 1024, 16, 24, 4096, note="GPT-2 medium style"),
     "gpt3_2p7b": ModelShape("gpt3_2p7b", 2560, 32, 32, 10240, note="GPT-3 2.7B style"),
     "llama_7b": ModelShape("llama_7b", 4096, 32, 32, 11008, num_kv_heads=32, note="LLaMA-7B style"),
-    "llama2_70b_gqa": ModelShape("llama2_70b_gqa", 8192, 64, 80, 28672, num_kv_heads=8, note="LLaMA-2-70B GQA style"),
     "t5_base": ModelShape("t5_base", 768, 12, 12, 3072, note="T5-base style"),
     "t5_large": ModelShape("t5_large", 1024, 16, 24, 4096, note="T5-large style"),
     "bart_large": ModelShape("bart_large", 1024, 16, 12, 4096, note="BART-large style"),
