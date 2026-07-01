@@ -136,5 +136,5 @@ Each CSV filename includes the profiled hidden dimension, head count, and
 context length:
 
 ```text
-latency_d<d>_h<h>_l<L>.csv
+latency_<shape_name>_d<d>_h<h>_l<L>.csv
 ```

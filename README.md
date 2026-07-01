@@ -212,7 +212,7 @@ python run_and_plot.py \
 Each run writes CSVs under the script's local `latency_results/` directory:
 
 ```text
-latency_results/<family>/latency_d<d>_h<h>_l<L>.csv
+latency_results/<family>/latency_<shape_name>_d<d>_h<h>_l<L>.csv
 ```
 
 Each CSV includes metadata columns for architecture, model family, shape name,
@@ -223,8 +223,8 @@ latency.
 
 When plotting is enabled, the scripts also write:
 
-- `bar_latency_d<d>_h<h>_l<L>.png`
-- `pie_latency_d<d>_h<h>_l<L>.png`
+- `bar_latency_<shape_name>_d<d>_h<h>_l<L>.png`
+- `pie_latency_<shape_name>_d<d>_h<h>_l<L>.png`
 - `comparison_avg_latency.png`
 - `comparison_pct_latency.png`
 - `model_family_heatmap.png` from `model_family_profiler/heatmap.py`

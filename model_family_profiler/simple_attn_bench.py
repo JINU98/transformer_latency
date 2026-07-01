@@ -127,7 +127,7 @@ def main() -> None:
                     Path(args.output_dir)
                     / "attention_microbench"
                     / kind
-                    / f"latency_d{shape.d_model}_h{shape.num_heads}_l{seq_len}.csv"
+                    / f"latency_{shape.name}_d{shape.d_model}_h{shape.num_heads}_l{seq_len}.csv"
                 )
                 save_rows_csv(csv_path, rows)
                 written.append(csv_path)

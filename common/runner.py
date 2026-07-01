@@ -106,7 +106,11 @@ def run_sweep(args, architecture: str, model_family: str, model_builder, input_b
                 "device": str(device),
             }
             rows = recorder.rows(metadata)
-            csv_path = out_dir / f"{model_family}" / f"latency_d{shape.d_model}_h{shape.num_heads}_l{seq_len}.csv"
+            csv_path = (
+                out_dir
+                / f"{model_family}"
+                / f"latency_{shape.name}_d{shape.d_model}_h{shape.num_heads}_l{seq_len}.csv"
+            )
             save_rows_csv(csv_path, rows)
             written.append(csv_path)
             if not args.no_plots:
