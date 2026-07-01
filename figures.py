@@ -30,7 +30,7 @@ def save_extended_figures(df, out_dir: Path, pd, plt) -> None:
 
     if not profile_df.empty:
         totals = profile_df.groupby(
-            ["architecture", "model_family", "shape_name", "seq_len"],
+            ["architecture", "model_family", "shape_name", "num_layers", "seq_len"],
             as_index=False,
         )["total_ms"].sum()
         totals["label"] = totals["model_family"] + " / " + totals["shape_name"]
