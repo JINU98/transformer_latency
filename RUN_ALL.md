@@ -2,7 +2,7 @@
 
 Use `run_all.py` from the repository root to launch the full profiling plan:
 architecture sweeps, model-family sweeps, attention microbenchmarks, heatmaps,
-and presentation figures.
+and figures.
 
 ## Recommended Commands
 
@@ -113,7 +113,7 @@ to narrow the run.
 | `--device auto|cpu|cuda` | Select execution device |
 | `--dtype float32|float16|bfloat16` | Select tensor dtype |
 | `--max-attn-gb N` | Skip runs whose estimated attention buffers exceed `N` GB |
-| `--no-plots` | Skip per-run plots and presentation figures |
+| `--no-plots` | Skip per-run plots and figures |
 
 ## Outputs
 
@@ -126,21 +126,21 @@ encoder_decoder_profiler/latency_results/
 model_family_profiler/latency_results/
 ```
 
-Presentation-style summary figures are written to:
+Summary figures are written to:
 
 ```text
-figures/presentation/
+figures/
 ```
 
-Generated figure images are intentionally not checked into the repository for
-now.
+Generated figure images under `figures/` are checked into the repository so the
+current results are easy to browse from GitHub.
 
 The root-level `figures.py` script writes:
 
 ```text
-figures/presentation/component_legend.png
-figures/presentation/<architecture>/model_family_component_share.png
-figures/presentation/<architecture>/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/component_legend.png
+figures/<architecture>/model_family_component_share.png
+figures/<architecture>/pie_charts/pie_d<d>_h<h>_l<L>.png
 ```
 
 The pie charts are separated by architecture. With the built-in presets, `h`

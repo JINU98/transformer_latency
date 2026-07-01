@@ -401,16 +401,15 @@ def save_pie_charts(arch_df, architecture: str, out_dir: Path, plt, index_mode: 
     return count
 
 
-def save_presentation_figures(profile_df, out_dir: Path, plt, index_mode: str) -> None:
-    presentation_dir = out_dir / "presentation"
-    presentation_dir.mkdir(parents=True, exist_ok=True)
-    save_component_legend(profile_df, presentation_dir, plt)
+def save_figures(profile_df, out_dir: Path, plt, index_mode: str) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    save_component_legend(profile_df, out_dir, plt)
 
     for architecture in PROFILE_ARCHITECTURES:
         arch_df = architecture_df(profile_df, architecture)
         if arch_df.empty:
             continue
-        arch_dir = presentation_dir / architecture
+        arch_dir = out_dir / architecture
         arch_dir.mkdir(parents=True, exist_ok=True)
         save_stacked_share_chart(arch_df, architecture, arch_dir, plt)
         pie_count = save_pie_charts(arch_df, architecture, arch_dir, plt, index_mode)
@@ -426,7 +425,7 @@ def save_presentation_figures(profile_df, out_dir: Path, plt, index_mode: str) -
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Create presentation-style latency figures from profiler CSV outputs."
+        description="Create latency figures from profiler CSV outputs."
     )
     parser.add_argument(
         "--inputs",
@@ -464,8 +463,8 @@ def main() -> None:
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    save_presentation_figures(profile_df, out_dir, plt, args.pie_index)
-    print(f"Wrote presentation figures to {out_dir / 'presentation'}")
+    save_figures(profile_df, out_dir, plt, args.pie_index)
+    print(f"Wrote figures to {out_dir}")
 
 
 if __name__ == "__main__":

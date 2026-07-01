@@ -41,7 +41,7 @@ transformer_latency/
 │   ├── run_and_plot.py       # Cross-family sweep
 │   ├── heatmap.py            # Cross-family heatmap
 │   └── simple_attn_bench.py  # Isolated self/cross-attention benchmark
-├── figures.py                # Presentation figures from saved CSVs
+├── figures.py                # Figures from saved CSVs
 ├── requirements.txt
 └── README.md
 ```
@@ -228,23 +228,22 @@ When plotting is enabled, the scripts also write:
 - `comparison_avg_latency.png`
 - `comparison_pct_latency.png`
 - `model_family_heatmap.png` from `model_family_profiler/heatmap.py`
-- presentation-style figures under `figures/presentation/` from root-level
-  `figures.py`
+- figures under `figures/` from root-level `figures.py`
 
-Generated figure images are intentionally not checked into the repository for
-now. Future experiment designs can regenerate only the plots that are needed.
+Generated figure images under `figures/` are checked into the repository so the
+current results are easy to browse from GitHub.
 
 `figures.py` keeps encoder-only, decoder-only, and encoder-decoder outputs
 separate:
 
 ```text
-figures/presentation/component_legend.png
-figures/presentation/encoder/model_family_component_share.png
-figures/presentation/encoder/pie_charts/pie_d<d>_h<h>_l<L>.png
-figures/presentation/decoder/model_family_component_share.png
-figures/presentation/decoder/pie_charts/pie_d<d>_h<h>_l<L>.png
-figures/presentation/encoder_decoder/model_family_component_share.png
-figures/presentation/encoder_decoder/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/component_legend.png
+figures/encoder/model_family_component_share.png
+figures/encoder/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/decoder/model_family_component_share.png
+figures/decoder/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/encoder_decoder/model_family_component_share.png
+figures/encoder_decoder/pie_charts/pie_d<d>_h<h>_l<L>.png
 ```
 
 The stacked charts and pie charts both use detailed profiled components, so
@@ -271,7 +270,7 @@ cd ../encoder_decoder_profiler
 python plot_from_csv.py
 ```
 
-Build presentation figures after one or more sweeps:
+Build figures after one or more sweeps:
 
 ```bash
 cd ..
