@@ -144,6 +144,9 @@ All scripts support the same common controls:
 The `--max-attn-gb` guard skips runs whose estimated attention buffers are too
 large. Set it to `0` to disable the guard.
 
+For a single command that runs the complete profiling plan, see
+[`RUN_ALL.md`](RUN_ALL.md).
+
 ### Encoder-only
 
 ```bash
