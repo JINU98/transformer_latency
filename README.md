@@ -228,19 +228,10 @@ When plotting is enabled, the scripts also write:
 - `comparison_avg_latency.png`
 - `comparison_pct_latency.png`
 - `model_family_heatmap.png` from `model_family_profiler/heatmap.py`
-- summary figures under `figures/` from root-level `figures.py`
+- optional summary figures under `figures/` from root-level `figures.py`
 
-`figures.py` also writes separated architecture-specific plots under:
-
-```text
-figures/by_architecture/encoder/
-figures/by_architecture/decoder/
-figures/by_architecture/encoder_decoder/
-```
-
-Each architecture folder contains separate views for latency vs context length
-`L`, hidden dimension `d`, attention head count `h`, layer count, component
-share by `L`, shape-by-`L` heatmap, and the `d/h` latency grid at max context.
+Generated figure images are intentionally not checked into the repository for
+now. Future experiment designs can regenerate only the plots that are needed.
 
 Regenerate plots from existing CSVs:
 

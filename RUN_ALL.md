@@ -132,6 +132,9 @@ Summary figures are written to:
 figures/
 ```
 
+Generated figure images are intentionally not checked into the repository for
+now.
+
 Each CSV filename includes the profiled hidden dimension, head count, and
 context length:
 
