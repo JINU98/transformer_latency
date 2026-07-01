@@ -88,6 +88,25 @@ These presets live in `common/config.py`.
 | `t5_large` | T5-large | 1024 | 16 | 16 | 24 | 4096 |
 | `bart_large` | BART-large | 1024 | 16 | 16 | 12 | 4096 |
 
+## Sweep Dimensions
+
+The main sweeps vary context length `L` directly and vary model dimension
+parameters through the model-shape presets above. Each selected shape carries
+its own realistic combination of:
+
+- hidden dimension `d`
+- query attention heads `h`
+- KV heads for GQA/MQA-style models
+- number of Transformer layers
+- FFN/intermediate dimension
+
+This means a run over `bert_base`, `bert_large`, `gpt3_2p7b`, and `llama_7b`
+covers different `d`, `h`, and layer-count values while preserving real
+model-like pairings. The scripts do not use an arbitrary Cartesian product
+such as every `d` with every `h` and every layer count by default. Individual
+scripts still expose `--d-model`, `--num-heads`, `--num-layers`,
+`--num-kv-heads`, and `--d-ff` for controlled custom runs.
+
 Default context-length presets:
 
 | Preset | `L` values |

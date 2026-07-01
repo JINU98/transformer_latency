@@ -68,6 +68,38 @@ The script uses real model-like `(d, h)` pairs from `common/config.py` rather
 than arbitrary Cartesian products. That keeps experiments close to actual BERT,
 GPT, LLaMA, T5, and BART-style configurations.
 
+## Parameter Coverage
+
+`run_all.py` varies these dimensions:
+
+| Dimension | How it varies |
+|---|---|
+| Context length `L` | Directly swept by tier or `--seq-lens` |
+| Hidden dimension `d` | Swept through model-shape presets |
+| Query heads `h` | Swept through model-shape presets |
+| KV heads | Swept through model-shape presets, including GQA in `llama2_70b_gqa` |
+| Number of layers | Swept through model-shape presets |
+| FFN/intermediate dimension | Swept through model-shape presets |
+
+The built-in layer counts are:
+
+| Shape | Layers |
+|---|---:|
+| `tiny_debug` | 2 |
+| `bert_base` | 12 |
+| `bert_large` | 24 |
+| `gpt2_medium` | 24 |
+| `gpt3_2p7b` | 32 |
+| `llama_7b` | 32 |
+| `llama2_70b_gqa` | 80 |
+| `t5_base` | 12 |
+| `t5_large` | 24 |
+| `bart_large` | 12 |
+
+So the run-all workflow covers different `L`, `d`, `h`, KV-head, layer-count,
+and FFN-size configurations. It does not independently run every possible
+`d x h x layer-count` Cartesian combination.
+
 ## What Runs
 
 `run_all.py` launches these steps in order:
