@@ -2,7 +2,7 @@
 
 Use `run_all.py` from the repository root to launch the full profiling plan:
 architecture sweeps, model-family sweeps, attention microbenchmarks, heatmaps,
-and summary figures.
+and presentation figures.
 
 ## Recommended Commands
 
@@ -113,7 +113,7 @@ to narrow the run.
 | `--device auto|cpu|cuda` | Select execution device |
 | `--dtype float32|float16|bfloat16` | Select tensor dtype |
 | `--max-attn-gb N` | Skip runs whose estimated attention buffers exceed `N` GB |
-| `--no-plots` | Skip per-run plots and summary figures |
+| `--no-plots` | Skip per-run plots and presentation figures |
 
 ## Outputs
 
@@ -126,14 +126,26 @@ encoder_decoder_profiler/latency_results/
 model_family_profiler/latency_results/
 ```
 
-Summary figures are written to:
+Presentation-style summary figures are written to:
 
 ```text
-figures/
+figures/presentation/
 ```
 
 Generated figure images are intentionally not checked into the repository for
 now.
+
+The root-level `figures.py` script writes:
+
+```text
+figures/presentation/component_legend.png
+figures/presentation/<architecture>/model_family_component_share.png
+figures/presentation/<architecture>/pie_charts/pie_d<d>_h<h>_l<L>.png
+```
+
+The pie charts are separated by architecture. With the built-in presets, `h`
+is tied to `d`, so the number of pie charts per architecture is `unique d
+values x unique L values`.
 
 Each CSV filename includes the profiled hidden dimension, head count, and
 context length:

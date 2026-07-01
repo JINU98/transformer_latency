@@ -41,7 +41,7 @@ transformer_latency/
 │   ├── run_and_plot.py       # Cross-family sweep
 │   ├── heatmap.py            # Cross-family heatmap
 │   └── simple_attn_bench.py  # Isolated self/cross-attention benchmark
-├── figures.py                # Summary figures from saved CSVs
+├── figures.py                # Presentation figures from saved CSVs
 ├── requirements.txt
 └── README.md
 ```
@@ -228,10 +228,31 @@ When plotting is enabled, the scripts also write:
 - `comparison_avg_latency.png`
 - `comparison_pct_latency.png`
 - `model_family_heatmap.png` from `model_family_profiler/heatmap.py`
-- optional summary figures under `figures/` from root-level `figures.py`
+- presentation-style figures under `figures/presentation/` from root-level
+  `figures.py`
 
 Generated figure images are intentionally not checked into the repository for
 now. Future experiment designs can regenerate only the plots that are needed.
+
+`figures.py` keeps encoder-only, decoder-only, and encoder-decoder outputs
+separate:
+
+```text
+figures/presentation/component_legend.png
+figures/presentation/encoder/model_family_component_share.png
+figures/presentation/encoder/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/presentation/decoder/model_family_component_share.png
+figures/presentation/decoder/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/presentation/encoder_decoder/model_family_component_share.png
+figures/presentation/encoder_decoder/pie_charts/pie_d<d>_h<h>_l<L>.png
+```
+
+The stacked charts use broad component groups for readability. The pie charts
+use the detailed component legend and are emitted per architecture and per
+`(d, h, L)` configuration. With the built-in real-shape presets, `h` is tied to
+`d`, so the pie-chart count is `unique d values x unique L values` for each
+architecture. Use `--pie-index d_l` to force exactly one pie per `(d, L)` if a
+future sweep varies multiple `h` values for the same `d`.
 
 Regenerate plots from existing CSVs:
 
@@ -246,7 +267,7 @@ cd ../encoder_decoder_profiler
 python plot_from_csv.py
 ```
 
-Build root-level summary figures after one or more sweeps:
+Build presentation figures after one or more sweeps:
 
 ```bash
 cd ..
