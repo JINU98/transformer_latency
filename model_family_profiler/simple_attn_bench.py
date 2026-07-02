@@ -119,9 +119,14 @@ def main() -> None:
                         "seq_len": seq_len,
                         "encoder_seq_len": seq_len if kind == "cross" else "",
                         "decoder_seq_len": seq_len,
+                        "phase": "attention_microbench",
+                        "phase_tokens": seq_len,
+                        "timed_repeats": args.repeats,
                         "dtype": args.dtype,
                         "device": str(device),
-                    }
+                    },
+                    timed_repeats=args.repeats,
+                    phase_tokens=seq_len,
                 )
                 csv_path = (
                     Path(args.output_dir)

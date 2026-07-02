@@ -13,7 +13,6 @@ from common.config import (
     parse_shape_names,
 )
 from common.io import save_rows_csv
-from common.latency import benchmark_forward
 from common.plotting import plot_comparisons, plot_single_csv
 from common.models import require_torch
 
@@ -30,6 +29,7 @@ def add_common_args(parser: argparse.ArgumentParser, architecture: str) -> None:
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--warmups", type=int, default=2)
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--decode-tokens", type=int, default=10, help="Number of one-token decode steps to average after prefill")
     parser.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     parser.add_argument("--dtype", default="float32", choices=["float32", "float16", "bfloat16"])
     parser.add_argument("--max-attn-gb", type=float, default=8.0, help="Skip runs whose estimated attention buffers exceed this many GB. Use <=0 to disable.")
@@ -46,6 +46,51 @@ def resolve_device_and_dtype(torch, device_name: str, dtype_name: str):
     if device == "cpu" and dtype == torch.float16:
         dtype = torch.float32
     return torch.device(device), dtype
+
+
+def benchmark_phase(make_model, run_once, warmups: int, repeats: int, torch_module):
+    model = make_model()
+    model.eval()
+    recorder = getattr(model, "recorder")
+    with torch_module.no_grad():
+        for _ in range(warmups):
+            run_once(model)
+        recorder.samples_ms.clear()
+        for _ in range(repeats):
+            run_once(model)
+    return model, recorder
+
+
+def metadata_for_shape(
+    args,
+    architecture: str,
+    model_family: str,
+    shape,
+    seq_len: int,
+    device,
+    phase: str,
+    phase_tokens: int,
+) -> dict[str, object]:
+    return {
+        "architecture": architecture,
+        "model_family": model_family,
+        "shape_name": shape.name,
+        "d_model": shape.d_model,
+        "num_heads": shape.num_heads,
+        "num_kv_heads": shape.kv_heads,
+        "head_dim": shape.head_dim,
+        "num_layers": shape.num_layers,
+        "d_ff": shape.d_ff,
+        "batch_size": args.batch_size,
+        "seq_len": seq_len,
+        "encoder_seq_len": seq_len if architecture in {"encoder", "encoder_decoder"} else "",
+        "decoder_seq_len": seq_len if architecture in {"decoder", "encoder_decoder"} else "",
+        "phase": phase,
+        "phase_tokens": phase_tokens,
+        "timed_repeats": args.repeats,
+        "dtype": args.dtype,
+        "device": str(device),
+    }
 
 
 def run_sweep(args, architecture: str, model_family: str, model_builder, input_builder, encoder_decoder: bool = False) -> list[Path]:
@@ -77,35 +122,30 @@ def run_sweep(args, architecture: str, model_family: str, model_builder, input_b
             def make_model():
                 return model_builder(shape, device=device, dtype=dtype, sync_cuda=(device.type == "cuda"))
 
-            def make_inputs():
-                return input_builder(shape, seq_len, args.batch_size, device, dtype)
+            if architecture == "decoder":
+                rows = run_decoder_prefill_decode(args, make_model, shape, seq_len, model_family, device, dtype, torch)
+            elif architecture == "encoder_decoder":
+                rows = run_encoder_decoder_prefill_decode(
+                    args, make_model, shape, seq_len, model_family, device, dtype, torch
+                )
+            else:
+                inputs = input_builder(shape, seq_len, args.batch_size, device, dtype)
 
-            _, recorder = benchmark_forward(
-                make_model=make_model,
-                make_inputs=make_inputs,
-                forward=lambda model, inputs: model(*inputs),
-                warmups=args.warmups,
-                repeats=args.repeats,
-                torch_module=torch,
-            )
-            metadata = {
-                "architecture": architecture,
-                "model_family": model_family,
-                "shape_name": shape.name,
-                "d_model": shape.d_model,
-                "num_heads": shape.num_heads,
-                "num_kv_heads": shape.kv_heads,
-                "head_dim": shape.head_dim,
-                "num_layers": shape.num_layers,
-                "d_ff": shape.d_ff,
-                "batch_size": args.batch_size,
-                "seq_len": seq_len,
-                "encoder_seq_len": seq_len if architecture in {"encoder", "encoder_decoder"} else "",
-                "decoder_seq_len": seq_len if architecture in {"decoder", "encoder_decoder"} else "",
-                "dtype": args.dtype,
-                "device": str(device),
-            }
-            rows = recorder.rows(metadata)
+                def run_prefill(model, inputs=inputs):
+                    return model(*inputs)
+
+                _, recorder = benchmark_phase(
+                    make_model=make_model,
+                    run_once=run_prefill,
+                    warmups=args.warmups,
+                    repeats=args.repeats,
+                    torch_module=torch,
+                )
+                metadata = metadata_for_shape(
+                    args, architecture, model_family, shape, seq_len, device, "prefill", seq_len
+                )
+                rows = recorder.rows(metadata, timed_repeats=args.repeats, phase_tokens=seq_len)
+
             csv_path = (
                 out_dir
                 / f"{model_family}"
@@ -118,6 +158,100 @@ def run_sweep(args, architecture: str, model_family: str, model_builder, input_b
     if written and not args.no_plots:
         plot_comparisons(written, out_dir / model_family, "comparison")
     return written
+
+
+def run_decoder_prefill_decode(args, make_model, shape, seq_len: int, model_family: str, device, dtype, torch_module):
+    prefill = torch_module.randn(args.batch_size, seq_len, shape.d_model, device=device, dtype=dtype)
+    decode_inputs = [
+        torch_module.randn(args.batch_size, 1, shape.d_model, device=device, dtype=dtype)
+        for _ in range(args.decode_tokens)
+    ]
+
+    def run_prefill(model):
+        return model(prefill, None, False)
+
+    _, prefill_recorder = benchmark_phase(
+        make_model=make_model,
+        run_once=run_prefill,
+        warmups=args.warmups,
+        repeats=args.repeats,
+        torch_module=torch_module,
+    )
+    prefill_metadata = metadata_for_shape(
+        args, "decoder", model_family, shape, seq_len, device, "prefill", seq_len
+    )
+    rows = prefill_recorder.rows(prefill_metadata, timed_repeats=args.repeats, phase_tokens=seq_len)
+
+    def run_decode(model):
+        recorder = getattr(model, "recorder")
+        with recorder.disabled():
+            _, past_kv = model(prefill, None, False)
+        for token in decode_inputs:
+            _, past_kv = model(token, past_kv, False)
+        return past_kv
+
+    _, decode_recorder = benchmark_phase(
+        make_model=make_model,
+        run_once=run_decode,
+        warmups=args.warmups,
+        repeats=args.repeats,
+        torch_module=torch_module,
+    )
+    decode_metadata = metadata_for_shape(
+        args, "decoder", model_family, shape, seq_len, device, "decode", args.decode_tokens
+    )
+    rows.extend(
+        decode_recorder.rows(decode_metadata, timed_repeats=args.repeats, phase_tokens=args.decode_tokens)
+    )
+    return rows
+
+
+def run_encoder_decoder_prefill_decode(args, make_model, shape, seq_len: int, model_family: str, device, dtype, torch_module):
+    encoder_x = torch_module.randn(args.batch_size, seq_len, shape.d_model, device=device, dtype=dtype)
+    decoder_prefill = torch_module.randn(args.batch_size, seq_len, shape.d_model, device=device, dtype=dtype)
+    decode_inputs = [
+        torch_module.randn(args.batch_size, 1, shape.d_model, device=device, dtype=dtype)
+        for _ in range(args.decode_tokens)
+    ]
+
+    def run_prefill(model):
+        return model(encoder_x, decoder_prefill, None, False)
+
+    _, prefill_recorder = benchmark_phase(
+        make_model=make_model,
+        run_once=run_prefill,
+        warmups=args.warmups,
+        repeats=args.repeats,
+        torch_module=torch_module,
+    )
+    prefill_metadata = metadata_for_shape(
+        args, "encoder_decoder", model_family, shape, seq_len, device, "prefill", seq_len
+    )
+    rows = prefill_recorder.rows(prefill_metadata, timed_repeats=args.repeats, phase_tokens=seq_len)
+
+    def run_decode(model):
+        recorder = getattr(model, "recorder")
+        with recorder.disabled():
+            encoder_states = model.encode(encoder_x)
+            _, past_kv = model.decode(decoder_prefill, encoder_states, None, False)
+        for token in decode_inputs:
+            _, past_kv = model.decode(token, encoder_states, past_kv, False)
+        return past_kv
+
+    _, decode_recorder = benchmark_phase(
+        make_model=make_model,
+        run_once=run_decode,
+        warmups=args.warmups,
+        repeats=args.repeats,
+        torch_module=torch_module,
+    )
+    decode_metadata = metadata_for_shape(
+        args, "encoder_decoder", model_family, shape, seq_len, device, "decode", args.decode_tokens
+    )
+    rows.extend(
+        decode_recorder.rows(decode_metadata, timed_repeats=args.repeats, phase_tokens=args.decode_tokens)
+    )
+    return rows
 
 
 def random_hidden_inputs(shape, seq_len: int, batch_size: int, device, dtype):

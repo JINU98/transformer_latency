@@ -30,22 +30,27 @@ SHAPE_TITLES = {
 }
 
 COMPONENT_COLORS = {
-    "Attention Weighted Sum": "#1f77b4",
-    "Causal Mask": "#aec7e8",
-    "Padding Mask": "#6baed6",
+    "Self Attention Weighted Sum": "#1f77b4",
+    "Cross Attention Weighted Sum": "#0f4c81",
+    "Self Causal Mask": "#aec7e8",
+    "Self Padding Mask": "#6baed6",
     "FFN Linear 1": "#ff7f0e",
     "FFN Linear 2": "#ffbb78",
     "FFN Activation": "#2ca02c",
-    "KV Cache Concat": "#98df8a",
-    "GQA KV Expand": "#17becf",
+    "Self KV Cache Concat": "#98df8a",
+    "Self GQA KV Expand": "#17becf",
     "LayerNorm (Pre-Attention)": "#d62728",
     "LayerNorm (Pre-FFN)": "#ff9896",
     "LayerNorm (Pre-Cross-Attention)": "#f7b6d2",
     "Output Head Projection": "#9467bd",
-    "Output Projection": "#c5b0d5",
-    "QKV Projection": "#8c564b",
-    "QKT MatMul": "#c49c94",
-    "Softmax": "#e377c2",
+    "Self Output Projection": "#c5b0d5",
+    "Cross Output Projection": "#6a51a3",
+    "Self QKV Projection": "#8c564b",
+    "Cross QKV Projection": "#a56752",
+    "Self QKT MatMul": "#c49c94",
+    "Cross QKT MatMul": "#7f5f5b",
+    "Self Softmax": "#e377c2",
+    "Cross Softmax": "#b84ea0",
     "Final Norm": "#7f7f7f",
     "Unmapped": "#c7c7c7",
 }
@@ -70,24 +75,25 @@ def display_shape_name(shape_name: str) -> str:
 
 def component_for_operation(operation_key: str) -> str:
     suffix = operation_key.split(".", 1)[-1]
+    prefix = "Cross" if operation_key.startswith("cross_attn.") else "Self"
     if suffix in {"q_proj", "k_proj", "v_proj"}:
-        return "QKV Projection"
+        return f"{prefix} QKV Projection"
     if suffix == "matmul_qk":
-        return "QKT MatMul"
+        return f"{prefix} QKT MatMul"
     if suffix == "softmax":
-        return "Softmax"
+        return f"{prefix} Softmax"
     if suffix == "weighted_sum":
-        return "Attention Weighted Sum"
+        return f"{prefix} Attention Weighted Sum"
     if suffix == "out_projection":
-        return "Output Projection"
+        return f"{prefix} Output Projection"
     if suffix == "apply_causal_mask":
-        return "Causal Mask"
+        return "Self Causal Mask"
     if suffix == "apply_padding_mask":
-        return "Padding Mask"
+        return "Self Padding Mask"
     if suffix == "cache_concat":
-        return "KV Cache Concat"
+        return "Self KV Cache Concat"
     if suffix == "gqa_expand":
-        return "GQA KV Expand"
+        return "Self GQA KV Expand"
     if operation_key == "ff.linear1" or operation_key in {"ff.w1_gate", "ff.w2_up"}:
         return "FFN Linear 1"
     if operation_key == "ff.linear2" or operation_key == "ff.w3_down":
@@ -113,6 +119,9 @@ def stack_group_for_operation(operation_key: str) -> str:
 
 def normalize_profile_df(df, pd):
     profile_df = df[df["architecture"].isin(PROFILE_ARCHITECTURES)].copy()
+    if "phase" not in profile_df.columns:
+        profile_df["phase"] = "prefill"
+    profile_df["phase"] = profile_df["phase"].fillna("prefill")
     numeric_cols = [
         "d_model",
         "num_heads",
@@ -122,11 +131,24 @@ def normalize_profile_df(df, pd):
         "d_ff",
         "batch_size",
         "seq_len",
+        "phase_tokens",
         "total_ms",
+        "avg_total_ms_per_repeat",
+        "avg_total_ms_per_token",
     ]
     for col in numeric_cols:
-        profile_df[col] = pd.to_numeric(profile_df[col], errors="coerce")
+        if col in profile_df.columns:
+            profile_df[col] = pd.to_numeric(profile_df[col], errors="coerce")
+    if "phase_tokens" not in profile_df.columns:
+        profile_df["phase_tokens"] = profile_df["seq_len"]
+    if "avg_total_ms_per_repeat" not in profile_df.columns:
+        profile_df["avg_total_ms_per_repeat"] = profile_df["total_ms"]
+    if "avg_total_ms_per_token" not in profile_df.columns:
+        profile_df["avg_total_ms_per_token"] = profile_df["total_ms"]
     profile_df = profile_df.dropna(subset=["d_model", "num_heads", "num_layers", "seq_len", "total_ms"])
+    profile_df["phase_latency_ms"] = profile_df["avg_total_ms_per_repeat"]
+    decode_mask = profile_df["phase"].astype(str).eq("decode")
+    profile_df.loc[decode_mask, "phase_latency_ms"] = profile_df.loc[decode_mask, "avg_total_ms_per_token"]
     for col in ["d_model", "num_heads", "num_layers", "seq_len"]:
         profile_df[col] = profile_df[col].astype(int)
     profile_df["component"] = profile_df["operation_key"].map(component_for_operation)
@@ -183,16 +205,24 @@ def save_component_legend(profile_df, out_dir: Path, plt) -> None:
     plt.close(fig)
 
 
-def save_stacked_share_chart(arch_df, architecture: str, out_dir: Path, plt) -> None:
+def phase_title(phase: str) -> str:
+    if phase == "decode":
+        return "Decode avg/token"
+    if phase == "prefill":
+        return "Prefill"
+    return phase.replace("_", " ").title()
+
+
+def save_stacked_share_chart(arch_df, architecture: str, phase: str, out_dir: Path, plt) -> None:
     import matplotlib.patheffects as path_effects
 
     if arch_df.empty:
         return
 
     group_cols = ["seq_len", "shape_name", "d_model", "num_heads", "num_layers", "stack_group"]
-    grouped = arch_df.groupby(group_cols, as_index=False)["total_ms"].sum()
+    grouped = arch_df.groupby(group_cols, as_index=False)["phase_latency_ms"].sum()
     total_cols = ["seq_len", "shape_name", "d_model", "num_heads", "num_layers"]
-    grouped["pct"] = grouped.groupby(total_cols)["total_ms"].transform(lambda values: 100 * values / values.sum())
+    grouped["pct"] = grouped.groupby(total_cols)["phase_latency_ms"].transform(lambda values: 100 * values / values.sum())
 
     configs = (
         grouped[total_cols]
@@ -299,7 +329,10 @@ def save_stacked_share_chart(arch_df, architecture: str, out_dir: Path, plt) -> 
 
     ax.set_ylim(0, 105)
     ax.set_ylabel("Latency share (%)", fontsize=15)
-    ax.set_title(f"{ARCHITECTURE_TITLES[architecture]} component share by model shape and L", fontsize=18)
+    ax.set_title(
+        f"{ARCHITECTURE_TITLES[architecture]} {phase_title(phase)} component share by model shape and L",
+        fontsize=18,
+    )
     ax.set_xticks(x_positions, x_labels, rotation=38, ha="right")
     ax.set_yticks(range(0, 101, 20), [f"{value}%" for value in range(0, 101, 20)])
     ax.grid(axis="y", alpha=0.22, zorder=0)
@@ -338,6 +371,7 @@ def pie_title(architecture: str, key: dict[str, int], config_df, index_mode: str
     layers = sorted(int(value) for value in config_df["num_layers"].unique())
     pieces = [
         ARCHITECTURE_TITLES[architecture],
+        phase_title(str(config_df["phase"].iloc[0])),
         f"d={key['d_model']}",
         f"L={key['seq_len']}",
     ]
@@ -365,11 +399,11 @@ def save_pie_charts(arch_df, architecture: str, out_dir: Path, plt, index_mode: 
             raw_key = (raw_key,)
         key = {col: int(value) for col, value in zip(group_cols, raw_key)}
         component_totals = (
-            config_df.groupby("component", as_index=False)["total_ms"]
+            config_df.groupby("component", as_index=False)["phase_latency_ms"]
             .sum()
-            .sort_values("total_ms", ascending=False)
+            .sort_values("phase_latency_ms", ascending=False)
         )
-        component_totals = component_totals[component_totals["total_ms"] > 0]
+        component_totals = component_totals[component_totals["phase_latency_ms"] > 0]
         if component_totals.empty:
             continue
 
@@ -379,7 +413,7 @@ def save_pie_charts(arch_df, architecture: str, out_dir: Path, plt, index_mode: 
 
         fig, ax = plt.subplots(figsize=(9.2, 9.2))
         wedges, _, autotexts = ax.pie(
-            component_totals["total_ms"],
+            component_totals["phase_latency_ms"],
             labels=None,
             colors=colors,
             startangle=90,
@@ -409,18 +443,19 @@ def save_figures(profile_df, out_dir: Path, plt, index_mode: str) -> None:
         arch_df = architecture_df(profile_df, architecture)
         if arch_df.empty:
             continue
-        arch_dir = out_dir / architecture
-        arch_dir.mkdir(parents=True, exist_ok=True)
-        save_stacked_share_chart(arch_df, architecture, arch_dir, plt)
-        pie_count = save_pie_charts(arch_df, architecture, arch_dir, plt, index_mode)
+        for phase, phase_df in arch_df.groupby("phase"):
+            phase_dir = out_dir / architecture / str(phase)
+            phase_dir.mkdir(parents=True, exist_ok=True)
+            save_stacked_share_chart(phase_df, architecture, str(phase), phase_dir, plt)
+            pie_count = save_pie_charts(phase_df, architecture, phase_dir, plt, index_mode)
 
-        dh_pairs = arch_df[["d_model", "num_heads"]].drop_duplicates().shape[0]
-        d_values = arch_df["d_model"].nunique()
-        l_values = arch_df["seq_len"].nunique()
-        print(
-            f"{architecture}: wrote {pie_count} pie chart(s) "
-            f"({dh_pairs} d/h setting(s), {d_values} d value(s), {l_values} L value(s))."
-        )
+            dh_pairs = phase_df[["d_model", "num_heads"]].drop_duplicates().shape[0]
+            d_values = phase_df["d_model"].nunique()
+            l_values = phase_df["seq_len"].nunique()
+            print(
+                f"{architecture}/{phase}: wrote {pie_count} pie chart(s) "
+                f"({dh_pairs} d/h setting(s), {d_values} d value(s), {l_values} L value(s))."
+            )
 
 
 def main() -> None:

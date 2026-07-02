@@ -112,6 +112,7 @@ to narrow the run.
 | `--seq-lens 512,1024` | Override the tier's context lengths |
 | `--device auto|cpu|cuda` | Select execution device |
 | `--dtype float32|float16|bfloat16` | Select tensor dtype |
+| `--decode-tokens 10` | Number of cached decode tokens averaged after prefill |
 | `--max-attn-gb N` | Skip runs whose estimated attention buffers exceed `N` GB |
 | `--no-plots` | Skip per-run plots and figures |
 
@@ -132,20 +133,20 @@ Summary figures are written to:
 figures/
 ```
 
-Generated figure images under `figures/` are checked into the repository so the
-current results are easy to browse from GitHub.
+Generated figure images under `figures/` can be checked into the repository
+after running the full sweep so results are easy to browse from GitHub.
 
 The root-level `figures.py` script writes:
 
 ```text
 figures/component_legend.png
-figures/<architecture>/model_family_component_share.png
-figures/<architecture>/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/<architecture>/<phase>/model_family_component_share.png
+figures/<architecture>/<phase>/pie_charts/pie_d<d>_h<h>_l<L>.png
 ```
 
-The pie charts are separated by architecture. With the built-in presets, `h`
-is tied to `d`, so the number of pie charts per architecture is `unique d
-values x unique L values`.
+The pie charts are separated by architecture and phase. With the built-in
+presets, `h` is tied to `d`, so the number of pie charts per architecture phase
+is `unique d values x unique L values`.
 
 Each CSV filename includes the profiled hidden dimension, head count, and
 context length:
@@ -153,3 +154,8 @@ context length:
 ```text
 latency_<shape_name>_d<d>_h<h>_l<L>.csv
 ```
+
+Decoder and encoder-decoder CSVs include separate `prefill` and `decode`
+phases. `prefill` reports the full `L`-token context pass. `decode` first
+fills that context, then reports per-token latency averaged over
+`--decode-tokens` cached one-token decode steps.

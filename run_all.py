@@ -38,6 +38,8 @@ def add_shared_args(command: list[str], args: argparse.Namespace, seq_lens: list
             str(args.warmups),
             "--repeats",
             str(args.repeats),
+            "--decode-tokens",
+            str(args.decode_tokens),
             "--device",
             args.device,
             "--dtype",
@@ -102,6 +104,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--batch-size", type=int, default=1)
     parser.add_argument("--warmups", type=int, default=2)
     parser.add_argument("--repeats", type=int, default=5)
+    parser.add_argument("--decode-tokens", type=int, default=10)
     parser.add_argument("--device", choices=["auto", "cpu", "cuda"], default="auto")
     parser.add_argument("--dtype", choices=["float32", "float16", "bfloat16"], default="float32")
     parser.add_argument("--max-attn-gb", type=float, default=8.0)

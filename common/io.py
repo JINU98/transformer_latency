@@ -18,6 +18,9 @@ FIELDNAMES = [
     "seq_len",
     "encoder_seq_len",
     "decoder_seq_len",
+    "phase",
+    "phase_tokens",
+    "timed_repeats",
     "dtype",
     "device",
     "operation_key",
@@ -27,6 +30,8 @@ FIELDNAMES = [
     "max_ms",
     "std_ms",
     "total_ms",
+    "avg_total_ms_per_repeat",
+    "avg_total_ms_per_token",
     "pct_total",
 ]
 

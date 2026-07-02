@@ -30,7 +30,7 @@ transformer_latency/
 │   └── plot_from_csv.py      # Rebuild encoder plots from CSVs
 ├── decoder_profiler/
 │   ├── dec_kv.py             # Decoder-only model builder
-│   ├── run_and_plot.py       # Decoder sweep with synthetic KV cache
+│   ├── run_and_plot.py       # Decoder prefill + cached-decode sweep
 │   └── plot_from_csv.py      # Rebuild decoder plots from CSVs
 ├── encoder_decoder_profiler/
 │   ├── enc_dec_kv.py         # Encoder-decoder model builder
@@ -57,7 +57,7 @@ per component.
 | `attn.k_proj` | Self-attention key projection |
 | `attn.v_proj` | Self-attention value projection |
 | `attn.gqa_expand` | Grouped-query attention KV expansion |
-| `attn.cache_concat` | KV-cache concatenation for decode-style runs |
+| `attn.cache_concat` | Self-attention KV-cache concatenation during cached decode |
 | `attn.matmul_qk` | QK attention score matmul |
 | `attn.apply_causal_mask` | Decoder causal mask |
 | `attn.apply_padding_mask` | Encoder padding mask |
@@ -117,12 +117,14 @@ Default context-length presets:
 ## What `L` Means
 
 - Encoder-only sweeps run a full bidirectional forward pass over `L` tokens.
-- Decoder-only sweeps run a one-token decode step at total context `L`, using
-  synthetic past KV cache of length `L - 1`. This exposes cache concat, causal
-  masking, GQA expansion, and output-head latency.
-- Encoder-decoder sweeps run an encoder source length of `L` plus a one-token
-  decoder step with synthetic decoder KV cache of length `L - 1`. This exposes
-  encoder latency, decoder self-attention latency, and cross-attention latency.
+- Decoder-only sweeps now write separate `prefill` and `decode` phases.
+  `prefill` runs a full causal forward over `L` tokens to fill the KV cache.
+  `decode` first fills that `L`-token cache, then measures one-token cached
+  decoding averaged over `--decode-tokens` generated tokens, default `10`.
+- Encoder-decoder sweeps also write separate `prefill` and `decode` phases.
+  `prefill` runs encoder source length `L` plus decoder context length `L`.
+  `decode` reuses the encoded source and filled decoder KV cache, then measures
+  one-token decoder steps with cross-attention averaged over `--decode-tokens`.
 - The attention micro-benchmark isolates self-attention and cross-attention
   without the full model stack.
 
@@ -151,6 +153,7 @@ All scripts support the same common controls:
 --num-layers 24
 --d-ff 6144
 --batch-size 1
+--decode-tokens 10
 --device auto|cpu|cuda
 --dtype float32|float16|bfloat16
 --warmups 2
@@ -217,45 +220,59 @@ latency_results/<family>/latency_<shape_name>_d<d>_h<h>_l<L>.csv
 
 Each CSV includes metadata columns for architecture, model family, shape name,
 `d_model`, query heads, KV heads, head dimension, number of layers, FFN size,
-batch size, context length, dtype, and device. Timing columns include count,
-average, min, max, standard deviation, total latency, and percent of timed
-latency.
+batch size, context length, phase, measured phase tokens, timed repeats, dtype,
+and device. Timing columns include count, average, min, max, standard
+deviation, total latency, average total latency per repeat, average total
+latency per token, and percent of timed latency.
+
+For decoder-style `decode` rows, `avg_total_ms_per_token` is the key latency
+number: it is measured after first filling the `L`-token context and then
+averaged over `--decode-tokens` one-token decode steps. For `prefill` rows,
+`avg_total_ms_per_repeat` is the full-context prefill pass latency.
 
 When plotting is enabled, the scripts also write:
 
-- `bar_latency_<shape_name>_d<d>_h<h>_l<L>.png`
-- `pie_latency_<shape_name>_d<d>_h<h>_l<L>.png`
-- `comparison_avg_latency.png`
-- `comparison_pct_latency.png`
+- `bar_latency_<shape_name>_d<d>_h<h>_l<L>_prefill.png`
+- `bar_latency_<shape_name>_d<d>_h<h>_l<L>_decode.png` for decoder-style runs
 - `model_family_heatmap.png` from `model_family_profiler/heatmap.py`
 - figures under `figures/` from root-level `figures.py`
 
-Generated figure images under `figures/` are checked into the repository so the
-current results are easy to browse from GitHub.
+The per-run bar plots use the same phase-specific metric: prefill bars show
+average component latency per full prefill run, while decode bars show average
+component latency per decoded token.
+
+Generated figure images under `figures/` can be checked into the repository
+after running the full sweep so results are easy to browse from GitHub.
 
 `figures.py` keeps encoder-only, decoder-only, and encoder-decoder outputs
 separate:
 
 ```text
 figures/component_legend.png
-figures/encoder/model_family_component_share.png
-figures/encoder/pie_charts/pie_d<d>_h<h>_l<L>.png
-figures/decoder/model_family_component_share.png
-figures/decoder/pie_charts/pie_d<d>_h<h>_l<L>.png
-figures/encoder_decoder/model_family_component_share.png
-figures/encoder_decoder/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/encoder/prefill/model_family_component_share.png
+figures/encoder/prefill/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/decoder/prefill/model_family_component_share.png
+figures/decoder/prefill/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/decoder/decode/model_family_component_share.png
+figures/decoder/decode/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/encoder_decoder/prefill/model_family_component_share.png
+figures/encoder_decoder/prefill/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/encoder_decoder/decode/model_family_component_share.png
+figures/encoder_decoder/decode/pie_charts/pie_d<d>_h<h>_l<L>.png
 ```
 
-The stacked charts and pie charts both use detailed profiled components, so
+The stacked charts and pie charts both use the phase-specific latency metric
+above and detailed profiled components, so
 known latency scopes such as final normalization, KV-cache concat, output head,
 masks, projections, matmuls, softmax, and FFN pieces are quantified directly
 instead of being folded into `Other`. An `Unmapped` bucket only appears if a new
 operation key is added without a component label. Pie charts are emitted per
-architecture and per `(d, h, L)` configuration. With the built-in real-shape
-presets, `h` is tied to `d`, so the pie-chart count is `unique d values x
-unique L values` for each architecture. Use `--pie-index d_l` to force exactly
-one pie per `(d, L)` if a future sweep varies multiple `h` values for the same
-`d`.
+architecture, phase, and `(d, h, L)` configuration. Self-attention and
+cross-attention components are labeled separately where both appear. With the
+built-in real-shape presets, `h` is tied to `d`, so the pie-chart count per
+phase is `unique d values x unique L values` for each architecture. Use
+`--pie-index d_l` to force exactly one pie per `(d, L)` if a future sweep varies
+multiple `h` values for the same `d`.
 
 Regenerate plots from existing CSVs:
 

@@ -245,13 +245,15 @@ class EncoderDecoderModel(nn.Module):
         self.final_norm = nn.LayerNorm(shape.d_model)
         self.output_head = nn.Linear(shape.d_model, vocab_size, bias=False)
 
-    def forward(self, encoder_x, decoder_x, past_kv=None, full_logits=False):
-        enc = self.encoder(encoder_x)
+    def encode(self, encoder_x):
+        return self.encoder(encoder_x)
+
+    def decode(self, decoder_x, encoder_states, past_kv=None, full_logits=False):
         x = decoder_x
         new_kv = []
         for idx, layer in enumerate(self.decoder):
             layer_past = past_kv[idx] if past_kv is not None else None
-            x, kv = layer(x, enc, past_kv=layer_past)
+            x, kv = layer(x, encoder_states, past_kv=layer_past)
             new_kv.append(kv)
         with self.recorder.record("model.final_norm"):
             x = self.final_norm(x)
@@ -259,3 +261,7 @@ class EncoderDecoderModel(nn.Module):
         with self.recorder.record("model.output_head"):
             _ = self.output_head(logits_input)
         return x, new_kv
+
+    def forward(self, encoder_x, decoder_x, past_kv=None, full_logits=False):
+        enc = self.encode(encoder_x)
+        return self.decode(decoder_x, enc, past_kv, full_logits)
