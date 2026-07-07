@@ -27,6 +27,11 @@ The script saves two views of each run:
 Phase-split CSVs are also saved in `phase_split/` so prefill and cached decode
 can be checked independently.
 
+Phase-split bar plots are saved in:
+
+- `phi_baseline_like/bar_plots/prefill/`
+- `phi_baseline_like/bar_plots/decode/`
+
 Run on the Jetson container from the repository root:
 
 ```bash
@@ -44,4 +49,10 @@ The main comparison figures are written as:
 ```text
 reproduce/phi_baseline_like/old_aligned/pie_chart_<L>.png
 reproduce/phi_baseline_like/old_aligned/component_legend.png
+```
+
+To regenerate the phase-split bar plots:
+
+```bash
+python3 reproduce/plot_phi_phase_bars.py
 ```
