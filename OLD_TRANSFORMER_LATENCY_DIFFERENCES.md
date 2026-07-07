@@ -40,9 +40,6 @@ such as `cross_attn.*`, `block.norm3`, and phase-specific decode metrics.
 
 ## 5. Old-Compatible Reproduction Is Required For Old Pie Charts
 
-The earlier mismatch in the 8192 pie chart came from using the current profiler
-path instead of the old-compatible path.
-
 Use `reproduce/run_phi_reproduction.py` and
 `reproduce/phi_baseline_like/old_aligned/` when recreating old Phi/GPT-style
 combined pie charts. The corrected AGX reproduction gives an 8192 softmax share
