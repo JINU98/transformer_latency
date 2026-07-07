@@ -1,7 +1,7 @@
 # Phi-Style Reproduction
 
-This folder recreates the old Phi/GPT-style pie-chart experiment with the
-current profiler code.
+This folder recreates the old Phi/GPT-style pie-chart experiment with an
+old-compatible profiler path.
 
 The target run is:
 
@@ -13,16 +13,16 @@ The target run is:
 - `num_layers = 32`
 - `d_ff = 12288`
 - `vocab_size = 30257`
+- Fused `attn.qkv_projection`
+- CUDA autocast `float16` on Jetson/AGX
 - Sequence lengths: `256, 512, 1024, 2048, 4096, 8192`
 
-The script saves two views of each run:
+The script saves:
 
-- `raw_current/`: current profiler components exactly as recorded, including
-  split `q_proj`, `k_proj`, `v_proj`, and `model.final_norm`.
-- `old_aligned/`: comparison-friendly components where `q_proj + k_proj +
-  v_proj` are grouped as `attn.qkv_projection`, decode-only no-op causal-mask
-  timing is excluded, and `model.final_norm` is dropped to match the older
-  baseline plotting setup.
+- `old_aligned/`: combined prefill + 10-token decode CSVs and pie charts using
+  the same component labels as the old baseline plots.
+- `raw_current/`: a copy of the fused-QKV combined run for easy lookup.
+- `phase_split/`: separate prefill and cached-decode CSVs.
 
 Phase-split CSVs are also saved in `phase_split/` so prefill and cached decode
 can be checked independently.
