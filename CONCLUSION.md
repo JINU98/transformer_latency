@@ -42,9 +42,7 @@ elementwise pass in which each layer constructs an `L x L` boolean triangular
 tensor and applies `masked_fill` to the full `heads x L x L` score tensor.
 This pass reads and writes the entire attention matrix once per layer while
 performing trivial arithmetic, so it is memory-bandwidth-bound, which explains
-why it exceeds the compute-bound QK matmul at long context. It also implies
-that the entries being masked, roughly half the score matrix, were computed by
-the QK matmul and passed through softmax before being discarded.
+why it exceeds the compute-bound QK matmul at long context. 
 
 The results also show that the mask cost is phase-specific. During cached
 decode the query is a single token whose score row is inherently causal: the
