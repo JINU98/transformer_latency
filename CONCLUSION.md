@@ -120,3 +120,8 @@ Overall, the profiler demonstrates that accurate Transformer latency analysis
 must be architecture-aware, phase-aware, and component-aware. A single
 end-to-end latency number can be valid as a throughput metric, but it is not
 specific enough to guide kernel, cache, or model-architecture optimization.
+
+
+Notes :-
+
+- Solutions regarding unconventional computing only not GPU's and how to solve it in analog and other domanis.
