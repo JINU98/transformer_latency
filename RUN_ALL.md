@@ -97,6 +97,7 @@ and FFN-size configurations. It does not independently run every possible
 8. `encoder_decoder_profiler/plot_from_csv.py`
 9. `model_family_profiler/heatmap.py`
 10. `figures.py`
+11. `prefill_decode_ratio.py`
 
 Use `--no-plots` to run only CSV-producing sweeps. Use
 `--skip-attention-bench`, `--skip-model-family`, or `--skip-summary-figures`
@@ -144,6 +145,17 @@ figures/<architecture>/<phase>/model_family_component_share.png
 figures/<architecture>/<phase>/pie_charts/pie_d<d>_h<h>_l<L>.png
 ```
 
+The root-level `prefill_decode_ratio.py` script writes:
+
+```text
+figures/decoder/prefill_decode_ratio.png
+figures/encoder_decoder/prefill_decode_ratio.png
+figures/prefill_decode_ratio.csv
+figures/decoder/prefill_decode_token_sweep.png
+figures/encoder_decoder/prefill_decode_token_sweep.png
+figures/prefill_decode_token_sweep.csv
+```
+
 The pie charts are separated by architecture and phase. With the built-in
 presets, `h` is tied to `d`, so the number of pie charts per architecture phase
 is `unique d values x unique L values`.
@@ -159,3 +171,9 @@ Decoder and encoder-decoder CSVs include separate `prefill` and `decode`
 phases. `prefill` reports the full `L`-token context pass. `decode` first
 fills that context, then reports per-token latency averaged over
 `--decode-tokens` cached one-token decode steps.
+
+The ratio script uses those paired phase metrics. The token-sweep charts scale
+the measured one-token decode latency by concrete generated-token counts for
+one representative decoder-only model and one representative encoder-decoder
+model. The chart prints the actual `G` count below every bar; for example, at
+`L = 8192` the sweep uses `G = 1, 819, 2048, 4096, 6144, 8192`.

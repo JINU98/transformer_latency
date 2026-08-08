@@ -178,7 +178,12 @@ def main() -> None:
         if not args.skip_model_family:
             commands.append(([py, "heatmap.py"], REPO_ROOT / "model_family_profiler"))
         if not args.skip_summary_figures:
-            commands.append(([py, "figures.py"], REPO_ROOT))
+            commands.extend(
+                [
+                    ([py, "figures.py"], REPO_ROOT),
+                    ([py, "prefill_decode_ratio.py"], REPO_ROOT),
+                ]
+            )
 
     for command, cwd in commands:
         run_command(command, cwd, args, failures)

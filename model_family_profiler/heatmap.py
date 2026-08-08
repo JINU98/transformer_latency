@@ -6,7 +6,17 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from common.plotting import require_plotting
+
+def require_summary_plotting():
+    try:
+        import pandas as pd
+        import matplotlib.pyplot as plt
+    except ImportError as exc:
+        raise SystemExit(
+            "Heatmap generation requires pandas and matplotlib. "
+            "Install with: pip install -r requirements.txt"
+        ) from exc
+    return pd, plt
 
 
 def main() -> None:
@@ -15,7 +25,7 @@ def main() -> None:
     parser.add_argument("--output", default="latency_results/model_family_heatmap.png")
     args = parser.parse_args()
 
-    pd, plt = require_plotting()
+    pd, plt = require_summary_plotting()
     csv_paths = sorted(Path(args.input_dir).glob("*/*.csv"))
     if not csv_paths:
         raise SystemExit(f"No CSV files found under {args.input_dir}")

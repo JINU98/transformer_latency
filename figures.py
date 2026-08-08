@@ -6,7 +6,17 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from common.plotting import require_plotting
+
+def require_summary_plotting():
+    try:
+        import pandas as pd
+        import matplotlib.pyplot as plt
+    except ImportError as exc:
+        raise SystemExit(
+            "Summary figure generation requires pandas and matplotlib. "
+            "Install with: pip install -r requirements.txt"
+        ) from exc
+    return pd, plt
 
 
 PROFILE_ARCHITECTURES = ("encoder", "decoder", "encoder_decoder")
@@ -484,7 +494,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    pd, plt = require_plotting()
+    pd, plt = require_summary_plotting()
     csv_paths = collect_csvs(args.inputs)
     if not csv_paths:
         print("No CSV inputs found. Run one of the profiler scripts first.")

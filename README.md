@@ -236,6 +236,7 @@ When plotting is enabled, the scripts also write:
 - `bar_latency_<shape_name>_d<d>_h<h>_l<L>_decode.png` for decoder-style runs
 - `model_family_heatmap.png` from `model_family_profiler/heatmap.py`
 - figures under `figures/` from root-level `figures.py`
+- prefill-to-decode ratio charts from root-level `prefill_decode_ratio.py`
 
 The per-run bar plots use the same phase-specific metric: prefill bars show
 average component latency per full prefill run, while decode bars show average
@@ -259,6 +260,12 @@ figures/encoder_decoder/prefill/model_family_component_share.png
 figures/encoder_decoder/prefill/pie_charts/pie_d<d>_h<h>_l<L>.png
 figures/encoder_decoder/decode/model_family_component_share.png
 figures/encoder_decoder/decode/pie_charts/pie_d<d>_h<h>_l<L>.png
+figures/decoder/prefill_decode_ratio.png
+figures/encoder_decoder/prefill_decode_ratio.png
+figures/prefill_decode_ratio.csv
+figures/decoder/prefill_decode_token_sweep.png
+figures/encoder_decoder/prefill_decode_token_sweep.png
+figures/prefill_decode_token_sweep.csv
 ```
 
 The stacked charts and pie charts both use the phase-specific latency metric
@@ -273,6 +280,16 @@ built-in real-shape presets, `h` is tied to `d`, so the pie-chart count per
 phase is `unique d values x unique L values` for each architecture. Use
 `--pie-index d_l` to force exactly one pie per `(d, L)` if a future sweep varies
 multiple `h` values for the same `d`.
+
+`prefill_decode_ratio.py` uses paired `prefill` and `decode` rows from the
+decoder and encoder-decoder profiler CSVs. Its family charts divide the
+full-context prefill latency by cached-decode latency per generated token. Its
+token-sweep charts choose one representative model per decode-capable
+architecture, GPT-2 medium for decoder-only and T5-base for encoder-decoder by
+default, then scale one measured decode step by concrete generated-token counts
+for each prompt length. The chart prints the actual `G` count below every bar;
+for example, at `L = 8192` the sweep uses `G = 1, 819, 2048, 4096, 6144, 8192`.
+The same counts are written to `figures/prefill_decode_token_sweep.csv`.
 
 Regenerate plots from existing CSVs:
 
@@ -292,4 +309,5 @@ Build figures after one or more sweeps:
 ```bash
 cd ..
 python figures.py
+python prefill_decode_ratio.py
 ```
