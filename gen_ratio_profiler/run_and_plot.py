@@ -196,8 +196,8 @@ def main() -> None:
         "--shape-name",
         default=None,
         help=(
-            "Representative model shape to profile. Defaults to llama_7b for --architecture decoder "
-            "and t5_base for --architecture encoder_decoder. Available shapes: " + ",".join(MODEL_SHAPES)
+            "Representative model shape to profile. Defaults to gpt3_2p7b for --architecture decoder "
+            "and bart_large for --architecture encoder_decoder. Available shapes: " + ",".join(MODEL_SHAPES)
         ),
     )
     parser.add_argument("--preset", choices=list(SEQ_LEN_PRESETS), default="quick")

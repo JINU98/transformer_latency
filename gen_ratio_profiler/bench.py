@@ -86,13 +86,13 @@ ARCHITECTURES = {
     "decoder": {
         "benchmark_fn": benchmark_decoder_prefill_and_decode_step,
         "attn_multiplier": 3.0,
-        "default_shape": "llama_7b",
-        "shape_names": ["gpt2_medium", "gpt3_2p7b", "llama_7b"],
+        "default_shape": "gpt3_2p7b",
+        "shape_names": ["gpt2_medium", "gpt3_2p7b", "llama_3b", "llama_7b"],
     },
     "encoder_decoder": {
         "benchmark_fn": benchmark_encoder_decoder_prefill_and_decode_step,
         "attn_multiplier": 5.0,
-        "default_shape": "t5_base",
-        "shape_names": ["t5_base", "t5_large", "bart_large"],
+        "default_shape": "bart_large",
+        "shape_names": ["t5_base", "t5_large", "t5_3b", "bart_large"],
     },
 }

@@ -11,7 +11,8 @@ figures don't answer directly:
 
 ## Method
 
-For a chosen representative decoder shape (default `llama_7b`) and each
+For a chosen representative model shape (default `gpt3_2p7b` for decoder,
+`bart_large` for encoder-decoder) and each
 sequence length `L`:
 
 1. Run one full causal **prefill** pass over `L` tokens (identical to
@@ -65,19 +66,22 @@ cd gen_ratio_profiler
 
 # Decoder-only: representative model = LLaMA-7B style, standard L sweep, five
 # generation scenarios: 1 token, 10 tokens, 20% of L, 50% of L, 100% of L.
-python run_and_plot.py --architecture decoder --shape-name llama_7b \
+python run_and_plot.py --architecture decoder --shape-name gpt3_2p7b \
     --preset standard --token-scenarios "1,10,20%,50%,100%"
 
-# Encoder-decoder: representative model = T5-base style.
-python run_and_plot.py --architecture encoder_decoder --shape-name t5_base \
+# Encoder-decoder: representative model = BART-large style (default).
+python run_and_plot.py --architecture encoder_decoder --shape-name bart_large \
     --preset standard --token-scenarios "1,10,20%,50%,100%"
 
-# Smaller/faster examples used to produce the figures checked into this repo:
+# Smaller/faster examples used to produce the figures checked into this repo
+# (gpt3_2p7b needs ~10.5GB RAM/VRAM at float32 -- this sandbox's 3.9GB box
+# can't run it, so gpt2_medium stands in for the decoder-only example below;
+# bart_large is light enough (~1.5GB fp32) to run as-is):
 python run_and_plot.py --architecture decoder --shape-name gpt2_medium \
     --seq-lens 128,256,512,1024 --token-scenarios "1,10,20%,50%,100%" \
     --repeats 3 --warmups 1 --device cpu
 
-python run_and_plot.py --architecture encoder_decoder --shape-name t5_base \
+python run_and_plot.py --architecture encoder_decoder --shape-name bart_large \
     --seq-lens 128,256,512,1024 --token-scenarios "1,10,20%,50%,100%" \
     --repeats 3 --warmups 1 --device cpu
 ```
@@ -86,15 +90,24 @@ python run_and_plot.py --architecture encoder_decoder --shape-name t5_base \
 
 | `--architecture` | Default `--shape-name` | Also accepts |
 |---|---|---|
-| `decoder` (default) | `llama_7b` | `gpt2_medium`, `gpt3_2p7b`, or any other shape in `common/config.py` |
-| `encoder_decoder` | `t5_base` | `t5_large`, `bart_large`, or any other shape |
+| `decoder` (default) | `gpt3_2p7b` (~2.6B params) | `gpt2_medium`, `llama_3b` (~2.9B), `llama_7b`, or any other shape in `common/config.py` |
+| `encoder_decoder` | `bart_large` | `t5_base`, `t5_large`, `t5_3b` (~3.0B), or any other shape |
+
+`gpt3_2p7b` and `llama_3b` are both ~3B-parameter-class decoder shapes if you
+want a model in that size range specifically; `t5_3b` is the encoder-decoder
+equivalent (~3.0B params, tuned to hit that under this repo's standard-MHA
+parameter accounting -- see the note in `common/config.py`). All three need
+roughly 10-12GB of RAM/VRAM at `--dtype float32`, or about half that at
+`float16`/`bfloat16` on a GPU (float16 on CPU is auto-upgraded to float32 by
+this repo's `resolve_device_and_dtype`, so use `bfloat16` for 2-byte weights
+without a GPU).
 
 Common flags (see `--help` for the full list):
 
 ```
 --architecture       decoder (default) or encoder_decoder
 --shape-name         One representative shape from common/config.py
-                     (default: llama_7b for decoder, t5_base for encoder_decoder)
+                     (default: gpt3_2p7b for decoder, bart_large for encoder_decoder)
 --preset             quick|standard|long L presets, or use --seq-lens directly
 --seq-lens           Comma-separated L values, e.g. 512,1024,2048
 --token-scenarios   Comma-separated scenarios: absolute counts ("1", "10")
@@ -114,7 +127,7 @@ Rebuild figures later without re-benchmarking:
 
 ```bash
 python plot_from_csv.py --architecture decoder --shape-name gpt2_medium
-python plot_from_csv.py --architecture encoder_decoder --shape-name t5_base
+python plot_from_csv.py --architecture encoder_decoder --shape-name bart_large
 ```
 
 ## Outputs
@@ -150,8 +163,8 @@ single phase.
 
 ## A note on encoder-decoder cross-attention cost
 
-The example `component_share_t5_base.png` figure shows `Cross QKV Projection`
-growing to dominate decode-heavy scenarios (up to ~75% of total latency at
+The example `component_share_bart_large.png` figure shows `Cross QKV Projection`
+growing to dominate decode-heavy scenarios (up to ~78% of total latency at
 L=1024, 100% of L generated). That is a real property of this repository's
 synthetic `EncoderDecoderModel` (`common/models.py`), not an artifact of the
 linear-scaling approximation used here: its cross-attention layer
