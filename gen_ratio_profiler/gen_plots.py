@@ -59,6 +59,14 @@ def _draw_group_backgrounds(ax, group_spans):
         ax.axvline(start - 0.9, color="#bdbdbd", linestyle="--", linewidth=1.0, zorder=1)
 
 
+def _tokens_by_key(rows: list[dict]) -> dict[tuple[int, str], int]:
+    return {(int(r["seq_len"]), str(r["token_scenario"])): int(float(r["tokens_generated"])) for r in rows}
+
+
+def _token_count_label(n: int) -> str:
+    return f"{n:,} tok" if n != 1 else "1 tok"
+
+
 def _draw_group_labels(ax, group_spans):
     for _, _, center, seq_len in group_spans:
         ax.text(
@@ -79,7 +87,7 @@ def plot_prefill_decode_share(summary_rows: list[dict], shape_name: str, archite
         return None
     plt, path_effects = _require_matplotlib()
 
-    display_by_label = {str(r["token_scenario"]): str(r["token_scenario_display"]) for r in summary_rows}
+    tokens_by_key = _tokens_by_key(summary_rows)
     scenario_labels = _ordered_scenarios(summary_rows)
     seq_lens = sorted({int(r["seq_len"]) for r in summary_rows})
 
@@ -136,7 +144,12 @@ def plot_prefill_decode_share(summary_rows: list[dict], shape_name: str, archite
         "by sequence length and tokens generated",
         fontsize=16,
     )
-    ax.set_xticks(x_positions, [display_by_label[label] for _, label in x_labels], rotation=38, ha="right")
+    ax.set_xticks(
+        x_positions,
+        [_token_count_label(tokens_by_key[(seq_len, label)]) for seq_len, label in x_labels],
+        rotation=38,
+        ha="right",
+    )
     ax.set_yticks(range(0, 101, 20), [f"{v}%" for v in range(0, 101, 20)])
     ax.grid(axis="y", alpha=0.22, zorder=0)
     ax.legend(loc="center left", bbox_to_anchor=(1.01, 0.5), frameon=True, fontsize=12)
@@ -160,7 +173,7 @@ def plot_component_share(scenario_rows: list[dict], shape_name: str, architectur
     for row in scenario_rows:
         row.setdefault("component", component_for_operation(str(row["operation_key"])))
 
-    display_by_label = {str(r["token_scenario"]): str(r["token_scenario_display"]) for r in scenario_rows}
+    tokens_by_key = _tokens_by_key(scenario_rows)
     scenario_labels = _ordered_scenarios(scenario_rows)
     seq_lens = sorted({int(r["seq_len"]) for r in scenario_rows})
 
@@ -223,7 +236,12 @@ def plot_component_share(scenario_rows: list[dict], shape_name: str, architectur
         "latency by L and tokens generated",
         fontsize=15,
     )
-    ax.set_xticks(x_positions, [display_by_label[label] for _, label in x_labels], rotation=38, ha="right")
+    ax.set_xticks(
+        x_positions,
+        [_token_count_label(tokens_by_key[(seq_len, label)]) for seq_len, label in x_labels],
+        rotation=38,
+        ha="right",
+    )
     ax.set_yticks(range(0, 101, 20), [f"{v}%" for v in range(0, 101, 20)])
     ax.grid(axis="y", alpha=0.22, zorder=0)
     ax.legend(loc="center left", bbox_to_anchor=(1.01, 0.5), frameon=True, fontsize=11)
@@ -251,6 +269,7 @@ def plot_pie_charts(scenario_rows: list[dict], shape_name: str, architecture: st
 
     groups: dict[tuple[int, str], dict[str, float]] = {}
     display_by_label = {}
+    tokens_by_key = _tokens_by_key(scenario_rows)
     for row in scenario_rows:
         key = (int(row["seq_len"]), str(row["token_scenario"]))
         display_by_label[str(row["token_scenario"])] = str(row["token_scenario_display"])
@@ -288,9 +307,13 @@ def plot_pie_charts(scenario_rows: list[dict], shape_name: str, architecture: st
         )
         for autotext in autotexts:
             autotext.set_weight("bold")
+        n_tokens = tokens_by_key[(seq_len, label)]
+        token_text = _token_count_label(n_tokens)
+        scenario_display = display_by_label[label]
+        subtitle = token_text if token_text.split()[0] == scenario_display.split()[0] else f"{token_text} ({scenario_display})"
         ax.set_title(
             f"{_arch_title(architecture)} — {display_shape_name(shape_name)} | L={seq_len} | "
-            f"{display_by_label[label]} generated\nComponent share of total prefill+decode latency",
+            f"{subtitle} generated\nComponent share of total prefill+decode latency",
             fontsize=14,
             pad=16,
         )
